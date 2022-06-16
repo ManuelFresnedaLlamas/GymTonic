@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:13
+    container_name: gym-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gym
+    ports:
+      - 5432:5432
+    volumes:
+      - ./tmp/db:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./dockers/backend
+    container_name: gym-backend
+    depends_on:
+      - db
+    ports:
+      - 8000:8000
+      - 7777:7777
+      - 40000:40000
+    volumes:
+      - ./:/src
+      - ./templates:/dst/templates
+      - ./migrations:/dst/migrations
+      - ./tmp/gym:/dst/gym
+    environment:
+      - GYM_DOMAIN=localhost
+      - GYM_ENV=dev
+      - GYM_DB=postgres://postgres:postgres@db:5432/gym
+      - GYM_PORT=:8000
+      - GYM_MIGRATIONS=true
+      - GYM_FIXTURES=true
+      - GYM_GO_VENDOR=true
+      - GYM_GO_GET=true
+      - GYM_GO_SERVER=true
+      - GYM_GO_DEBUG=true
+      - GYM_URL_ENV=http://localhost:3000
+    command: bash -c "/src/init.sh"
+
+  migrator:
+    build:
+      context: ./dockers/sql-migrate
+    container_name: gym-migrator
+    volumes:
+      - ./migrations:/migrations
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gym
+    depends_on:
+      - db
